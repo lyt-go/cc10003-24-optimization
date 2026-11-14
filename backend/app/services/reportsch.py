@@ -7,6 +7,15 @@ from app.store import store
 
 MODULE = "reportsch"
 REQUIRED_FIELDS = ["任务编号", "报表名称", "包含指标"]
+OPTIONAL_FIELDS = [
+    "输出格式",
+    "调度cron",
+    "收件人列表",
+    "数据日期偏移",
+    "重试次数上限",
+    "数据日期列表",
+    "返回字段",
+]
 STATUS_ORDER = ["草稿", "调度评审中", "已排期", "已暂停"]
 ACTION_RULES = {"提交调度评审": "调度评审中", "确认排期": "已排期", "暂停调度": "已暂停"}
 NEGATIVE_ACTIONS = []
@@ -40,6 +49,12 @@ class ReportschService:
         rows = store.rows(MODULE)
         entry = {"id": max((int(row.get("id", 0)) for row in rows), default=0) + 1}
         entry.update({field: values.get(field) for field in REQUIRED_FIELDS})
+        entry.update({
+            field: values.get(field)
+            for field in OPTIONAL_FIELDS
+            if values.get(field) not in (None, "")
+        })
+        entry.setdefault("返回字段", entry.get("包含指标"))
         entry["status"] = STATUS_ORDER[0]
         entry["pending"] = True
         entry["abnormal"] = False

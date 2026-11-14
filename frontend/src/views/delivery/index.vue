@@ -35,7 +35,12 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in rows" :key="String(row.id)">
+        <tr
+          v-for="row in rows"
+          :key="String(row.id)"
+          :class="{ 'row-selected': selectedId === row.id }"
+          @click="selectedId = Number(row.id)"
+        >
           <td v-for="column in columns" :key="column">{{ row[column] ?? '—' }}</td>
           <td class="row-actions">
             <button
@@ -43,9 +48,12 @@
               :key="action"
               class="link"
               type="button"
-              @click="runAction(action, row)"
+              @click.stop="runAction(action, row)"
             >
               {{ action }}
+            </button>
+            <button class="link" type="button" @click.stop="selectedId = Number(row.id)">
+              失败续做
             </button>
           </td>
         </tr>
@@ -59,6 +67,8 @@
       <span>共 {{ total }} 条数据服务记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
     </footer>
+
+    <ReportResumePanel module="delivery" :entry-id="selectedId" />
   </section>
 </template>
 
@@ -66,6 +76,7 @@
 import { onMounted, ref } from 'vue'
 
 import { request } from '@/api/client'
+import ReportResumePanel from '@/components/ReportResumePanel.vue'
 
 type Row = Record<string, string | number | null>
 
@@ -77,6 +88,7 @@ const stats = [{"label": "服务版本总数", "value": 0}, {"label": "已发布
 
 const rows = ref<Row[]>([])
 const total = ref(0)
+const selectedId = ref<number | null>(null)
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
@@ -121,6 +133,9 @@ async function reload() {
     const payload = await response.json()
     rows.value = payload.items ?? []
     total.value = payload.total ?? rows.value.length
+    if (selectedId.value == null && rows.value.length) {
+      selectedId.value = Number(rows.value[0].id)
+    }
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '数据服务列表读取失败'
   }

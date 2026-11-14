@@ -68,6 +68,31 @@ npm run dev
 | 洞察推送 | `insight` | 洞察报告 | 报告编号、报告标题、分析主题 |
 | 数据验证 | `dataval` | 验证任务 | 任务编号、验证数据集、验证类型 |
 
+## 报表数据服务：失败续做
+
+报表任务与数据服务共用 `backend/app/services/report_resume.py` 的判定结果：
+重试与分页都通过同一个 `ResumeDecision` 决定“复用哪个产物、使用哪个版本”，
+`report_data.py` 负责把判定落成产物、片段、批次、服务版本和下载记录。
+
+- 重试按「报表任务 + 数据日期 + 指标集合」复用已确认产物，只补缺失日期或未确认片段；
+- 同一批次号（或同一组请求参数）重复执行只生效一次，不会重复写下载记录；
+- 全部计划日期与片段确认后才推进服务版本；
+- 两个任务并发生成同一日期时，后完成方转复用并记录冲突原因；
+- 页段 `page > 1` 必须带上首次请求返回的版本号，期间完成新版本也不会跨版本拼接。
+
+主要入口（`reportsch` 与 `delivery` 下语义一致）：
+
+```text
+POST /api/delivery/resume/retry              按服务/任务发起续做批次
+GET  /api/delivery/{id}/resume               已完成 / 待重试 / 复用数量与当前版本
+GET  /api/delivery/{id}/pages?page=1         页段读取（返回版本号）
+GET  /api/delivery/{id}/pages?page=2&version=首次版本
+GET  /api/delivery/{id}/downloads            下载记录与重复记录数
+GET  /api/report-data/overview               各服务续做数量汇总
+```
+
+回归测试：`cd backend && .venv/bin/python -m unittest discover -s tests -v`
+
 ## 约定
 
 - 每个模块的前端页面在 `frontend/src/views/<模块>/index.vue`，后端接口在
